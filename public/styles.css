@@ -1,0 +1,71 @@
+/* 全体のリセット */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #333;
+  font-family: sans-serif;
+  text-align: center;
+  color: #fff;
+  user-select: none;
+}
+
+/* タイトル */
+h1 {
+  margin: 20px;
+  font-size: 2rem;
+}
+
+/* スコア表示部分 */
+#score-container {
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+}
+
+/* ボタンなどのUI部分 */
+#controls {
+  margin: 10px;
+}
+
+button {
+  font-size: 1rem;
+  padding: 10px 20px;
+  margin: 5px;
+  cursor: pointer;
+}
+
+/* Canvas */
+#gameCanvas {
+  background: #555;
+  /* ゲーム背景（アスファルト色） */
+  display: block;
+  margin: 0 auto;
+  border: 2px solid #444;
+}
+
+/* ゲームオーバー画面 */
+#gameOver {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
+  padding: 30px;
+  display: none;
+  border: 2px solid #fff;
+  border-radius: 10px;
+}
+
+#gameOver h2 {
+  margin-bottom: 20px;
+}
+
+#finalScore {
+  margin-bottom: 20px;
+  font-size: 1.2rem;
+  color: #ffd700;
+  /* ゴールド */
+}
