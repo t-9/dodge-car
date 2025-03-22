@@ -10,6 +10,9 @@ const gameOverDiv = document.getElementById("gameOver");
 const finalScoreText = document.getElementById("finalScore");
 const scoreSpan = document.getElementById("score");
 
+// ▼ BGM用のHTMLAudioElementを取得
+const bgm = document.getElementById("bgm");
+
 const CANVAS_WIDTH = canvas.width;
 const CANVAS_HEIGHT = canvas.height;
 
@@ -76,6 +79,12 @@ function startGame() {
   gameOverDiv.style.display = "none";
   startBtn.disabled = true;
 
+  // ▼ BGMを再生開始（ユーザー操作で押されたタイミングなので再生可能）
+  bgm.currentTime = 0; // 曲の先頭に戻す
+  bgm.play().catch(err => {
+    console.warn("BGM再生がブロックされました:", err);
+  });
+
   animate();
 }
 
@@ -85,13 +94,24 @@ function endGame() {
 
   gameOverDiv.style.display = "block";
   finalScoreText.textContent = `Your Score: ${score}`;
+
+  // ▼ ゲームオーバー時にBGMを止めたい場合
+  //   （ゲームオーバー中もBGMを流し続けたければ、ここは消してください）
+  bgm.pause();
 }
 
 function restartGame() {
   resetGame();
   gameOverDiv.style.display = "none";
-  animate();
   isGameRunning = true;
+
+  // ▼ BGMを再生（再スタート）
+  bgm.currentTime = 0;
+  bgm.play().catch(err => {
+    console.warn("BGM再生がブロックされました:", err);
+  });
+
+  animate();
 }
 
 function resetGame() {
@@ -147,16 +167,13 @@ function animate() {
 function updateDifficulty() {
   // score が 1000, 2000, 3000... に到達するたびに難易度アップ
   if (score >= nextDifficultyScore) {
-    // 敵の速度を少し上げる
     enemySpeedMin += 0.5;
     enemySpeedMax += 0.5;
 
-    // 敵の出現間隔を短くする (下限は 15 フレームまで)
     if (enemySpawnInterval > 15) {
       enemySpawnInterval -= 5;
     }
 
-    // 次の難易度アップスコアを 1000 点先へ
     nextDifficultyScore += 1000;
   }
 }
@@ -171,8 +188,8 @@ function drawRoad() {
   const dashHeight = 20;
   const gapHeight = 20;
 
-  // 白線が下へ流れているように表示 => 自車が上へ進んでいるように見える
-  const scrollSpeed = 50;  // ここを指定の 50 に設定
+  // 白線が下に流れている -> 自車が上へ進んでいるように見える
+  const scrollSpeed = 50;
   const offset = (gameFrame * scrollSpeed) % (dashHeight + gapHeight);
 
   let yPos = offset;
@@ -207,6 +224,7 @@ function drawPlayer() {
 // ===============================
 // 敵車の生成＆描画
 // ===============================
+let enemySpawnCounter = 0;
 function handleEnemy() {
   // 一定フレームごとに敵を生成
   if (enemySpawnCounter % enemySpawnInterval === 0) {
@@ -216,10 +234,8 @@ function handleEnemy() {
 
   for (let i = 0; i < enemies.length; i++) {
     const e = enemies[i];
-    // 上から下へ移動
     e.y += e.speed;
 
-    // 画面下に消えたら配列から削除
     if (e.y > CANVAS_HEIGHT) {
       enemies.splice(i, 1);
       i--;
@@ -228,11 +244,7 @@ function handleEnemy() {
     drawEnemy(e);
   }
 }
-let enemySpawnCounter = 0;
 
-/**
- * 敵車を1台生成する（既存の敵とは重ならないように配置）
- */
 function spawnEnemy() {
   const width = 40;
   const height = 60;
@@ -252,9 +264,6 @@ function spawnEnemy() {
   }
 }
 
-/**
- * 指定した (x, y, w, h) が既存の敵と重なっていないか判定
- */
 function isOverlappingAnyEnemy(x, y, w, h) {
   for (const e of enemies) {
     if (
@@ -263,7 +272,7 @@ function isOverlappingAnyEnemy(x, y, w, h) {
       y < e.y + e.height &&
       y + h > e.y
     ) {
-      return true;  // 重なりがある
+      return true;  // 重なっている
     }
   }
   return false;
@@ -300,7 +309,6 @@ function drawEnemy(enemy) {
 function checkCollision() {
   for (let i = 0; i < enemies.length; i++) {
     const e = enemies[i];
-    // AABB衝突判定
     if (
       playerX < e.x + e.width &&
       playerX + playerWidth > e.x &&
