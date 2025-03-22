@@ -6,57 +6,61 @@ const ctx = canvas.getContext("2d");
 
 const startBtn = document.getElementById("startBtn");
 const restartBtn = document.getElementById("restartBtn");
+const copyClipboardBtn = document.getElementById("copyClipboardBtn");
+const shareXBtn = document.getElementById("shareXBtn");
 const gameOverDiv = document.getElementById("gameOver");
 const finalScoreText = document.getElementById("finalScore");
 const scoreSpan = document.getElementById("score");
 
-// ▼ BGM 要素を取得
-const bgm = document.getElementById("bgm");           // メインBGM(ループ)
-const gameOverBgm = document.getElementById("gameOverBgm"); // ゲームオーバーBGM(1回)
+// BGM
+const bgm = document.getElementById("bgm");
+const gameOverBgm = document.getElementById("gameOverBgm");
 
 const CANVAS_WIDTH = canvas.width;   // 400
 const CANVAS_HEIGHT = canvas.height; // 600
 
-// 車のパラメータ
+// プレイヤー車
 const playerWidth = 40;
 const playerHeight = 60;
 let playerX = CANVAS_WIDTH / 2 - playerWidth / 2;
-let playerY = CANVAS_HEIGHT - playerHeight - 20; // 画面下付近
+let playerY = CANVAS_HEIGHT - playerHeight - 20;
 let playerSpeed = 5;
 
 // スコア
 let score = 0;
 
-// 敵リスト
+// 敵
 let enemies = [];
 
-// 難易度パラメータ
+// 難易度関連
 let enemySpeedMin = 3;
 let enemySpeedMax = 6;
 let enemySpawnInterval = 60;
 let enemySpawnCounter = 0;
 let nextDifficultyScore = 1000;
 
-// ゲームループ管理
+// ゲームループ
 let animationId = null;
 let isGameRunning = false;
 let gameFrame = 0;
 
-// 6車線関連
-// レーン幅: 400 / 6 ≈ 66.66
-const laneWidth = CANVAS_WIDTH / 6;
-// レーン境界線の x座標(5本)
-let laneLines = [];
-for (let i = 1; i < 6; i++) {
+// 6車線 => 400/6=約66.66
+const laneCount = 6;
+const laneWidth = CANVAS_WIDTH / laneCount;
+
+// レーン境界線 (5本)
+const laneLines = [];
+for (let i = 1; i < laneCount; i++) {
   laneLines.push(i * laneWidth);
 }
-// レーンの中央(x座標)が6箇所
-let laneCenters = [];
-for (let i = 0; i < 6; i++) {
+
+// レーンの中央座標 (6つ)
+const laneCenters = [];
+for (let i = 0; i < laneCount; i++) {
   laneCenters.push((i + 0.5) * laneWidth);
 }
 
-// キー入力制御
+// キーボード入力
 const keys = {
   ArrowLeft: false,
   ArrowRight: false,
@@ -81,8 +85,20 @@ document.addEventListener("keyup", (e) => {
 startBtn.addEventListener("click", startGame);
 restartBtn.addEventListener("click", restartGame);
 
+// 「Copy to Clipboard」ボタン
+copyClipboardBtn.addEventListener("click", () => {
+  copyCanvasToClipboard(canvas);
+});
+
+// 「Share on X」ボタン
+shareXBtn.addEventListener("click", () => {
+  const text = `スコア: ${score} だったよ！\n\n▼プレイはこちらから\nhttps://t-9.github.io/dodge-car/\n\n#CarAvoidanceGame`;
+  const url = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}`;
+  window.open(url, "_blank");
+});
+
 // ===============================
-// ゲーム開始・終了・リスタート
+// ゲーム制御
 // ===============================
 function startGame() {
   if (isGameRunning) return;
@@ -92,10 +108,10 @@ function startGame() {
   gameOverDiv.style.display = "none";
   startBtn.disabled = true;
 
-  // メインBGMスタート
+  // BGM再生
   bgm.currentTime = 0;
   bgm.play().catch(err => {
-    console.warn("BGM再生がブロックされました:", err);
+    console.warn("BGM再生ブロック:", err);
   });
 
   animate();
@@ -105,7 +121,6 @@ function endGame() {
   isGameRunning = false;
   cancelAnimationFrame(animationId);
 
-  // スコア表示
   gameOverDiv.style.display = "block";
   finalScoreText.textContent = `Your Score: ${score}`;
 
@@ -113,10 +128,10 @@ function endGame() {
   bgm.pause();
   bgm.currentTime = 0;
 
-  // ゲームオーバーBGM再生
+  // ゲームオーバーBGM
   gameOverBgm.currentTime = 0;
   gameOverBgm.play().catch(err => {
-    console.warn("GameOverBGM再生がブロックされました:", err);
+    console.warn("GameOverBGMエラー:", err);
   });
 }
 
@@ -125,21 +140,21 @@ function restartGame() {
   gameOverDiv.style.display = "none";
   isGameRunning = true;
 
-  // ゲームオーバーBGMを止める
+  // ゲームオーバーBGM停止
   gameOverBgm.pause();
   gameOverBgm.currentTime = 0;
 
   // メインBGM再生
   bgm.currentTime = 0;
   bgm.play().catch(err => {
-    console.warn("BGM再生がブロックされました:", err);
+    console.warn("BGM再生ブロック:", err);
   });
 
   animate();
 }
 
 // ===============================
-// 初期化
+// ゲームリセット
 // ===============================
 function resetGame() {
   score = 0;
@@ -166,24 +181,18 @@ function animate() {
   animationId = requestAnimationFrame(animate);
   ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-  // 背景(6車線)描画
   drawRoad();
-
-  // プレイヤー操作
   handlePlayerMovement();
-
-  // プレイヤー描画
   drawPlayer();
-
-  // 敵生成＆描画
   handleEnemy();
 
-  // 衝突チェック
-  checkCollision();
-
-  // スコア更新
+  // ====【修正ポイント】====
+  // 先にスコアを加算してDOM更新
   score++;
   scoreSpan.textContent = score;
+
+  // その後、衝突チェック
+  checkCollision();
 
   // 難易度アップ
   updateDifficulty();
@@ -192,38 +201,32 @@ function animate() {
 }
 
 // ===============================
-// 難易度アップ (スコア1000ごと)
+// 難易度アップ
 // ===============================
 function updateDifficulty() {
   if (score >= nextDifficultyScore) {
     enemySpeedMin += 0.5;
     enemySpeedMax += 0.5;
-
     if (enemySpawnInterval > 15) {
       enemySpawnInterval -= 5;
     }
-
     nextDifficultyScore += 1000;
   }
 }
 
 // ===============================
-// 背景 (6車線) の描画
+// 背景（6車線）の描画
 // ===============================
 function drawRoad() {
   ctx.strokeStyle = "#fff";
   ctx.lineWidth = 2;
 
-  // 白線の破線パターン
   const dashHeight = 20;
   const gapHeight = 20;
-
-  // 背景を下方向に流す演出 => 自車が上へ進んでいるように見える
   const scrollSpeed = 50;
   const offset = (gameFrame * scrollSpeed) % (dashHeight + gapHeight);
 
-  // laneLines (5本) に縦破線を引く
-  laneLines.forEach(lineX => {
+  for (let lineX of laneLines) {
     let yPos = offset;
     ctx.beginPath();
     while (yPos < CANVAS_HEIGHT) {
@@ -232,11 +235,11 @@ function drawRoad() {
       yPos += dashHeight + gapHeight;
     }
     ctx.stroke();
-  });
+  }
 }
 
 // ===============================
-// プレイヤーの描画
+// プレイヤー描画
 // ===============================
 function drawPlayer() {
   ctx.fillStyle = "#00ff00";
@@ -254,21 +257,17 @@ function drawPlayer() {
 }
 
 // ===============================
-// 敵車の生成＆描画 (6車線)
+// 敵生成＆描画
 // ===============================
 function handleEnemy() {
-  // 一定フレームごとに敵生成
   if (enemySpawnCounter % enemySpawnInterval === 0) {
     spawnEnemy();
   }
   enemySpawnCounter++;
 
-  // 敵更新＆描画
   for (let i = 0; i < enemies.length; i++) {
     const e = enemies[i];
     e.y += e.speed;
-
-    // 画面下に消えたら削除
     if (e.y > CANVAS_HEIGHT) {
       enemies.splice(i, 1);
       i--;
@@ -278,30 +277,20 @@ function handleEnemy() {
   }
 }
 
-/**
- * 6車線のどこか1レーンをランダムに選んで敵を配置。
- * 他の敵と重ならない位置が見つかるまでリトライ。
- */
 function spawnEnemy() {
   const width = 40;
   const height = 60;
-
   const maxTry = 20;
   let tryCount = 0;
 
   while (tryCount < maxTry) {
     tryCount++;
-
-    // レーンをランダムに選ぶ
-    const laneIndex = Math.floor(Math.random() * 6); // 0〜5
+    const laneIndex = Math.floor(Math.random() * laneCount);
     const centerX = laneCenters[laneIndex];
-
-    // 敵の x座標: レーンの中心 - 車幅/2
     const x = centerX - width / 2;
-    const y = -height; // 画面上外
+    const y = -height;
     const speed = Math.random() * (enemySpeedMax - enemySpeedMin) + enemySpeedMin;
 
-    // 他の敵と重ならないかチェック
     if (!isOverlappingAnyEnemy(x, y, width, height)) {
       enemies.push({ x, y, width, height, speed });
       break;
@@ -309,7 +298,6 @@ function spawnEnemy() {
   }
 }
 
-// 敵の重なり判定 (AABB)
 function isOverlappingAnyEnemy(x, y, w, h) {
   for (const e of enemies) {
     if (
@@ -350,7 +338,7 @@ function drawEnemy(enemy) {
 }
 
 // ===============================
-// 衝突判定 (プレイヤー vs 敵)
+// 衝突判定
 // ===============================
 function checkCollision() {
   for (let i = 0; i < enemies.length; i++) {
@@ -384,17 +372,32 @@ function handlePlayerMovement() {
     playerY += playerSpeed;
   }
 
-  // 画面外へ出ないように制限
-  if (playerX < 0) {
-    playerX = 0;
-  }
-  if (playerX + playerWidth > CANVAS_WIDTH) {
-    playerX = CANVAS_WIDTH - playerWidth;
-  }
-  if (playerY < 0) {
-    playerY = 0;
-  }
+  // 画面外制限
+  if (playerX < 0) playerX = 0;
+  if (playerX + playerWidth > CANVAS_WIDTH) playerX = CANVAS_WIDTH - playerWidth;
+  if (playerY < 0) playerY = 0;
   if (playerY + playerHeight > CANVAS_HEIGHT) {
     playerY = CANVAS_HEIGHT - playerHeight;
   }
+}
+
+// ===============================
+// Canvasをクリップボードにコピー
+// ===============================
+function copyCanvasToClipboard(canvas) {
+  canvas.toBlob(async (blob) => {
+    if (!blob) {
+      alert("画像を取得できませんでした");
+      return;
+    }
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({ [blob.type]: blob })
+      ]);
+      alert("Screenshot copied to clipboard!\nXの投稿画面でCtrl+V(Cmd+V)してください。");
+    } catch (e) {
+      alert("コピーに失敗しました。\nブラウザが対応していない可能性があります。");
+      console.error("Clipboard error:", e);
+    }
+  }, "image/png");
 }

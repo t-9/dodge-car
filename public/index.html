@@ -13,25 +13,29 @@
   <!-- スコア表示 -->
   <div id="score-container">Score: <span id="score">0</span></div>
 
-  <!-- Canvas -->
+  <!-- キャンバス（ゲーム画面） -->
   <canvas id="gameCanvas" width="400" height="600"></canvas>
 
-  <!-- スタート/リスタート用ボタン -->
+  <!-- スタートボタン -->
   <div id="controls">
     <button id="startBtn">Start Game</button>
   </div>
 
-  <!-- ゲームオーバーテキスト -->
+  <!-- ゲームオーバー画面 -->
   <div id="gameOver">
     <h2>GAME OVER</h2>
     <p id="finalScore"></p>
+    <!-- クリップボードコピー -->
+    <button id="copyClipboardBtn">Copy Image to Clipboard</button>
+    <!-- Xに移動（シェア） -->
+    <button id="shareXBtn">Share on X</button>
+    <!-- リスタート -->
     <button id="restartBtn">Restart</button>
   </div>
 
-  <!-- ▼ メインBGM (ループ有り) -->
+  <!-- メインBGM (ループ) -->
   <audio id="bgm" src="bgm.mp3" loop></audio>
-
-  <!-- ▼ ゲームオーバーBGM (ループ無し) -->
+  <!-- ゲームオーバーBGM (1回) -->
   <audio id="gameOverBgm" src="gameOver.mp3"></audio>
 
   <script src="script.js"></script>
