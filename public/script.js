@@ -10,8 +10,9 @@ const gameOverDiv = document.getElementById("gameOver");
 const finalScoreText = document.getElementById("finalScore");
 const scoreSpan = document.getElementById("score");
 
-// ▼ BGM用のHTMLAudioElementを取得
-const bgm = document.getElementById("bgm");
+// ▼ 追加：BGM要素の取得
+const bgm = document.getElementById("bgm");             // ループするメインBGM
+const gameOverBgm = document.getElementById("gameOverBgm"); // ループしないゲームオーバーBGM
 
 const CANVAS_WIDTH = canvas.width;
 const CANVAS_HEIGHT = canvas.height;
@@ -30,6 +31,7 @@ let enemies = [];
 let enemySpeedMin = 3;           // 敵車の最小速度
 let enemySpeedMax = 6;           // 敵車の最大速度
 let enemySpawnInterval = 60;     // 何フレームごとに敵を生成するか
+let enemySpawnCounter = 0;
 
 // スコア
 let score = 0;
@@ -58,7 +60,6 @@ document.addEventListener("keydown", (e) => {
     keys[e.key] = true;
   }
 });
-
 document.addEventListener("keyup", (e) => {
   if (keys.hasOwnProperty(e.key)) {
     keys[e.key] = false;
@@ -79,12 +80,13 @@ function startGame() {
   gameOverDiv.style.display = "none";
   startBtn.disabled = true;
 
-  // ▼ BGMを再生開始（ユーザー操作で押されたタイミングなので再生可能）
-  bgm.currentTime = 0; // 曲の先頭に戻す
+  // ▼ メインBGMの再生開始
+  bgm.currentTime = 0;
   bgm.play().catch(err => {
     console.warn("BGM再生がブロックされました:", err);
   });
 
+  // ゲームループ開始
   animate();
 }
 
@@ -92,12 +94,19 @@ function endGame() {
   isGameRunning = false;
   cancelAnimationFrame(animationId);
 
+  // スコア表示
   gameOverDiv.style.display = "block";
   finalScoreText.textContent = `Your Score: ${score}`;
 
-  // ▼ ゲームオーバー時にBGMを止めたい場合
-  //   （ゲームオーバー中もBGMを流し続けたければ、ここは消してください）
+  // ▼ メインBGMを停止し、先頭に戻す
   bgm.pause();
+  bgm.currentTime = 0;
+
+  // ▼ ゲームオーバーBGMを1回再生
+  gameOverBgm.currentTime = 0;
+  gameOverBgm.play().catch(err => {
+    console.warn("GameOverBGM再生がブロックされました:", err);
+  });
 }
 
 function restartGame() {
@@ -105,7 +114,11 @@ function restartGame() {
   gameOverDiv.style.display = "none";
   isGameRunning = true;
 
-  // ▼ BGMを再生（再スタート）
+  // ▼ ゲームオーバーBGMがまだ鳴っていたら停止
+  gameOverBgm.pause();
+  gameOverBgm.currentTime = 0;
+
+  // ▼ メインBGMを再生
   bgm.currentTime = 0;
   bgm.play().catch(err => {
     console.warn("BGM再生がブロックされました:", err);
@@ -120,6 +133,7 @@ function resetGame() {
   playerX = CANVAS_WIDTH / 2 - playerWidth / 2;
   playerY = CANVAS_HEIGHT - playerHeight - 20;
   enemies = [];
+  enemySpawnCounter = 0;
   gameFrame = 0;
 
   // 難易度パラメータをリセット
@@ -130,7 +144,7 @@ function resetGame() {
 }
 
 // ===============================
-// ゲームループ(アニメーション)
+// メインゲームループ
 // ===============================
 function animate() {
   animationId = requestAnimationFrame(animate);
@@ -145,7 +159,7 @@ function animate() {
   // プレイヤーの描画
   drawPlayer();
 
-  // 敵車を生成＆描画
+  // 敵車の生成＆描画
   handleEnemy();
 
   // 衝突チェック
@@ -188,7 +202,7 @@ function drawRoad() {
   const dashHeight = 20;
   const gapHeight = 20;
 
-  // 白線が下に流れている -> 自車が上へ進んでいるように見える
+  // 白線が下へ流れる => 自車が上方向に走ってるように見える
   const scrollSpeed = 50;
   const offset = (gameFrame * scrollSpeed) % (dashHeight + gapHeight);
 
@@ -224,9 +238,7 @@ function drawPlayer() {
 // ===============================
 // 敵車の生成＆描画
 // ===============================
-let enemySpawnCounter = 0;
 function handleEnemy() {
-  // 一定フレームごとに敵を生成
   if (enemySpawnCounter % enemySpawnInterval === 0) {
     spawnEnemy();
   }
@@ -254,7 +266,7 @@ function spawnEnemy() {
   while (tryCount < maxTry) {
     tryCount++;
     const x = Math.random() * (CANVAS_WIDTH - width);
-    const y = -height; // 画面の上外から
+    const y = -height; // 画面の上外
     const speed = Math.random() * (enemySpeedMax - enemySpeedMin) + enemySpeedMin;
 
     if (!isOverlappingAnyEnemy(x, y, width, height)) {
@@ -272,7 +284,7 @@ function isOverlappingAnyEnemy(x, y, w, h) {
       y < e.y + e.height &&
       y + h > e.y
     ) {
-      return true;  // 重なっている
+      return true;
     }
   }
   return false;

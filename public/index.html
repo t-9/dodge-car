@@ -28,8 +28,11 @@
     <button id="restartBtn">Restart</button>
   </div>
 
-  <!-- ▼ BGM用のオーディオタグを追加 (autoplayは付けずにユーザー操作でplayする) -->
+  <!-- ▼ ゲームプレイ中のBGM (ループ) -->
   <audio id="bgm" src="bgm.mp3" loop></audio>
+
+  <!-- ▼ ゲームオーバー時のBGM (ループなし) -->
+  <audio id="gameOverBgm" src="gameOver.mp3"></audio>
 
   <script src="script.js"></script>
 </body>
